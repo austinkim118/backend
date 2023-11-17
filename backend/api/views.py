@@ -1,57 +1,27 @@
 from django.shortcuts import render
 
-# Create your views here.
-from django.shortcuts import render
+from django.middleware.csrf import get_token
 from django.http import JsonResponse, HttpResponse
+from django.views import View
 import json
-
 from django.views.decorators.csrf import csrf_exempt
-# this is not good???
-#@csrf_exempt
-def login(request):
-    # example login info to use in isloginInfoValid()
-    dummy_login_data = {
-        "username": "Austin",
-        "password": "Kim"
-    }
+from django.utils.decorators import method_decorator
 
-    if request.method == 'POST':
-        # Retrieve the login data from the request's body
-        login_data = json.loads(request.body.decode('utf-8'))
+def get_csrf_token(request):
+    csrf_token = get_token(request)
+    return JsonResponse({'csrf_token': csrf_token})
 
-        # Validate the user's credentials
-        username = login_data.get('username')
-        password = login_data.get('password')
+# @method_decorator(csrf_exempt, name='dispatch')
+class AuthenticateUserView(View):
+    def post(self, request):
+        user_input = json.loads(request.body)
+        username = user_input.get('username')
+        password = user_input.get('password')
 
-        # Perform authentication and respond with the appropriate data
-        if is_valid_credentials(username, password, dummy_login_data):
-            # Authentication was successful
-            response_data = {'message': 'Login successful'}
-            return JsonResponse(response_data)
+        if username == 'Austin' and password == 'Kim':
+            return JsonResponse({'authenticated': True})
         else:
-            # Authentication failed
-            response_data = {'message': 'Login failed'}
-            return JsonResponse(response_data, status=401)  # Unauthorized
-
-    # For GET requests, return a "Method Not Allowed" response
-    return HttpResponse("Method not allowed", status=405)
-
-    ## set up REST framework?
-    # user_input = request.data
-
-    # if (
-    #     user_input.get("usernamd") == dummy_login_data.get("username")
-    #     and user_input.get("password") == dummy_login_data.get("password")
-    # ):
-    #     verified = True
-    # else:
-    #     verified = False
-
-    # response_data = {"verified": verified}
-    # return response_data
-
-def is_valid_credentials(username, password, dummy):
-    if username == dummy.get('username') and password == dummy.get('password'):
-        return True
-    else:
-        return False
+            return JsonResponse({'authenticated': False})
+        
+    def get(self, request):
+        return HttpResponse("Received GET method: Method not allowed")

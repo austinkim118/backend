@@ -53,9 +53,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-REST_FRAMEWORK = {'DEFAULT_PERMISSION_CALSSES': [
-    'rest_framework.permission.AllowAny'
-]}
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny'
+    ]
+}
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -135,12 +137,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # configurations for CORS -- in INSTALLED_APPS above
 CORS_ALLOW_ALL_ORIGINS = False
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Replace with the origin of your React app
-]
+CORS_ALLOWED_ORIGINS = ['http://localhost:3000']
 
 CORS_ALLOW_CREDENTIALS = True  # Set this to True if you need to allow cookies and credentials in requests
-
 # Optional: Configure specific HTTP methods and headers
 # CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "DELETE"]
 # CORS_ALLOW_HEADERS = ["content-type"]
+
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
