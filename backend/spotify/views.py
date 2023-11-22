@@ -5,7 +5,7 @@ from requests import Request, post
 from rest_framework import status
 from rest_framework.response import Response
 from .util import update_or_create_user_token, is_spotify_authenticated
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 # get my app authenticated with Spotify, asking if we can have access to Spotify data for a specific user
 # Then Spotify will say yes or no based on info i pass in.
@@ -14,7 +14,7 @@ from django.http import HttpResponse
 class AuthURL(APIView):
     def get(self, request, format=None):
         # the scopes depends on requirements -- google spotify api scopes
-        scope = 'user-read-playback-state user-modify-playback-state user-read-currently-playing'
+        scope='user-library-read playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative'
         url = Request('GET', 'https://accounts.spotify.com/authorize', params={
             'scope': scope,
             'response_type': 'code',
@@ -49,8 +49,6 @@ def spotify_callback(request, format=None):
     refresh_token = response.get('refresh_token')
     expires_in = response.get('expires_in')
     error = response.get('error')
-
-    # return ("Hello")
 
     # if not request.session.exists(request.session.session_key):
     #     request.session.create()
