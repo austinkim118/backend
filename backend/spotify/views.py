@@ -32,13 +32,12 @@ class AuthURL(APIView):
 def spotify_callback(request, format=None):
     # retrieves authroization code from request
     code = request.GET.get('code')
-    error = request.GET.get('error')
 
     # sends POST request to spotify token endpoint to exchange auth code for access/refresh tokens
     response = post('https://accounts.spotify.com/api/token', data={
         'grant_type': 'authorization_code',
         'code': code,
-        'redirect_uri': REDIRECT_URI,
+        'redirect_uri': REDIRECT_URI,    # needs to be the same redirect uri used in AuthURL
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET
     }).json()
@@ -50,14 +49,20 @@ def spotify_callback(request, format=None):
     expires_in = response.get('expires_in')
     error = response.get('error')
 
-    # if not request.session.exists(request.session.session_key):
-    #     request.session.create()
+    if error:
+        # Handle the Spotify API error
+        error_description = response.get('error_description', 'No error description provided.')
+        return JsonResponse({'error': error, 'error_description': error_description})
 
-    # update_or_create_user_token(request.session.session_key, access_token, refresh_token, token_type, expires_in)
+    if not request.session.exists(request.session.session_key):
+        request.session.create()
 
-    # return redirect('front:')
-    return HttpResponse("Authentication Successful")
+    update_or_create_user_token(request.session.session_key, access_token, refresh_token, token_type, expires_in)
 
+    # redirec to front end
+    react_callback_url = "http://localhost:3000/main"
+    return redirect(react_callback_url)
+        
 class IsAuthenticated(APIView):
     def get(self, request, format=None):
         is_authenticated = is_spotify_authenticated(self.request.session.session_key)
