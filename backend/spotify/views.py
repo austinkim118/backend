@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from requests import Request, post
 from rest_framework import status
 from rest_framework.response import Response
-from .util import update_or_create_user_token, is_spotify_authenticated
+from .util import *
 from django.http import HttpResponse, JsonResponse
 
 # get my app authenticated with Spotify, asking if we can have access to Spotify data for a specific user
@@ -14,7 +14,7 @@ from django.http import HttpResponse, JsonResponse
 class AuthURL(APIView):
     def get(self, request, format=None):
         # the scopes depends on requirements -- google spotify api scopes
-        scope='user-library-read playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative'
+        scope = 'user-top-read playlist-modify-public playlist-modify-private'
         url = Request('GET', 'https://accounts.spotify.com/authorize', params={
             'scope': scope,
             'response_type': 'code',
@@ -67,3 +67,14 @@ class IsAuthenticated(APIView):
     def get(self, request, format=None):
         is_authenticated = is_spotify_authenticated(self.request.session.session_key)
         return Response({'status': is_authenticated}, status=status.HTTP_200_OK)
+    
+class TopItems(APIView):
+    def get(self, request, format=None):
+        # Check if the session key is available
+        if self.request.session.session_key:
+            endpoint = "me/top/artists?"
+            response = execute_spotify_api_request(self.request.session.session_key, endpoint)
+            return Response({'response': response}, status=status.HTTP_200_OK)
+        else:
+            # Handle the case where the session key is not available
+            return Response({'error': 'Session key not found'}, status=status.HTTP_400_BAD_REQUEST)
