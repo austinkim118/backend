@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from .util import *
 from django.http import HttpResponse, JsonResponse
+import json
 
 # get my app authenticated with Spotify, asking if we can have access to Spotify data for a specific user
 # Then Spotify will say yes or no based on info i pass in.
@@ -14,7 +15,7 @@ from django.http import HttpResponse, JsonResponse
 class AuthURL(APIView):
     def get(self, request, format=None):
         # the scopes depends on requirements -- google spotify api scopes
-        scope = 'user-top-read playlist-modify-public playlist-modify-private'
+        scope = 'user-top-read playlist-modify-public playlist-modify-private user-read-private user-read-email'
         url = Request('GET', 'https://accounts.spotify.com/authorize', params={
             'scope': scope,
             'response_type': 'code',
@@ -63,18 +64,41 @@ def spotify_callback(request, format=None):
     react_callback_url = "http://localhost:3000/main"
     return redirect(react_callback_url)
         
+# See if user is authenticated at login, if so skip Spotify Auth process
 class IsAuthenticated(APIView):
     def get(self, request, format=None):
         is_authenticated = is_spotify_authenticated(self.request.session.session_key)
         return Response({'status': is_authenticated}, status=status.HTTP_200_OK)
     
+# Retrieves top artists/tracks from user's account
 class TopItems(APIView):
     def get(self, request, format=None):
         # Check if the session key is available
         if self.request.session.session_key:
             endpoint = "me/top/artists?"
             response = execute_spotify_api_request(self.request.session.session_key, endpoint)
-            return Response({'response': response}, status=status.HTTP_200_OK)
+            items = [{'name': item['name'], 'genres': item['genres']} for item in response['items']]
+            return Response({'items': items}, status=status.HTTP_200_OK)
         else:
             # Handle the case where the session key is not available
             return Response({'error': 'Session key not found'}, status=status.HTTP_400_BAD_REQUEST)
+        
+## Requested by "Create Playlist" button in front end
+## BUT should have POST method not Get -- from front end will be pushed User Inputs (Playlist length)
+class CreatePlaylist(APIView):
+    def get(self, request, format=None):
+        session_key = self.request.session.session_key
+        new_playlist_url = create_playlist_and_add_tracks(session_key)
+        return Response({"url": new_playlist_url}, status=status.HTTP_200_OK)
+
+class UserId(APIView):
+    def get(self, request, format=None):
+        session_key = self.request.session.session_key
+        user = get_user_id(session_key)
+        return Response(user)
+    
+class Recommendations(APIView):
+    def get(self, request, format=None):
+        session_key = self.request.session.session_key
+        recommended_tracks = get_recommendations(session_key)
+        return Response(recommended_tracks)

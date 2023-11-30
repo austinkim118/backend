@@ -11,7 +11,6 @@ def get_csrf_token(request):
     csrf_token = get_token(request)
     return JsonResponse({'csrf_token': csrf_token})
 
-# @method_decorator(csrf_exempt, name='dispatch')
 class AuthenticateUserView(View):
     def post(self, request):
         user_input = json.loads(request.body)
