@@ -18,5 +18,7 @@ urlpatterns = [
     path('is-authenticated/', IsAuthenticated.as_view()),
     path('create-playlist/', CreatePlaylist.as_view()),
     path('id/', UserId.as_view()),
-    path('recommendations/', Recommendations.as_view())
+    path('recommendations/', Recommendations.as_view()),
+    path('recently-played/', RecentlyPlayed.as_view()),
+    path('genres/', Genres.as_view())
 ]

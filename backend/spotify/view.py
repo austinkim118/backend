@@ -8,7 +8,7 @@ from .services import SpotifyUser, Playlist
 
 class AuthURL(APIView):
     def get(self, request, format=None):
-        scope = 'user-top-read playlist-modify-public playlist-modify-private user-read-private user-read-email'
+        scope = 'user-top-read playlist-modify-public playlist-modify-private user-read-private user-read-email user-read-recently-played'
         url = Request('GET', 'https://accounts.spotify.com/authorize', params={
             'scope': scope,
             'response_type': 'code',
@@ -71,5 +71,18 @@ class UserId(APIView):
 class Recommendations(APIView):
     def get(self, request, format=None):
         playlist = Playlist(request.session.session_key)
-        recommended_tracks = playlist.get_recommendations()
+        seed = ["k-pop", "pop", "country"]
+        recommended_tracks = playlist.get_recommendations(seed)
         return Response(recommended_tracks, status=status.HTTP_200_OK)
+
+class RecentlyPlayed(APIView):
+    def get(self, request, format=None):
+        playlist = Playlist(request.session.session_key)
+        recently_played = playlist.get_recently_played_tracks()
+        return Response(recently_played, status=status.HTTP_200_OK)
+    
+class Genres(APIView):
+    def get(self, request, format=None):
+        playlist = Playlist(request.session.session_key)
+        genres = playlist.get_artist_genres()
+        return Response(genres, status=status.HTTP_200_OK)

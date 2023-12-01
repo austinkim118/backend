@@ -3,10 +3,10 @@ from django.utils import timezone
 from datetime import timedelta
 from .credentials import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
 from requests import post, put, get
+from collections import Counter
 
 BASE_URL = "https://api.spotify.com/v1/"
 
-## 
 class SpotifyUser:
     """Authenticates Spotify User"""
     def __init__(self, session_key):
@@ -77,11 +77,11 @@ class Playlist:
     """Operations regarding generating Spotify Playlist"""
     def __init__(self, session_key):
         self.session_key = session_key
-        self.tokens = SpotifyUser(session_key).tokens
+        self.user = SpotifyUser(session_key)
 
     ## Handle any HTTP requests to Spotify API endpoints
     def execute_spotify_api_request(self, endpoint, method='GET', data=None):
-        tokens = self.tokens
+        tokens = self.user.tokens
         headers = {'Content-Type': 'application/json', 'Authorization': "Bearer " + tokens.access_token}
 
         if method == 'POST':
@@ -114,17 +114,45 @@ class Playlist:
     
     # right now, manually inputted genres but SHOULD be interactive
     ## can take genres / artists / tracks as seed params
-    def get_recommendations(self):
-        endpoint = endpoint = "recommendations?seed_genres=k-pop%2Cpop"
+    def get_recommendations(self, seed):
+        """
+        :param seed [list]: 5 seed parameters - can be genre/artist/track ==> but for now, will be genres
+        """
+        endpoint = f"recommendations?limit=100&seed_genres={seed[0]}%2C{seed[1]}%2C+{seed[2]}"
         response = self.execute_spotify_api_request(endpoint)
         track_uris = [track['uri'] for track in response['tracks']]
-        return {"uris":track_uris}
+        return {"uris": track_uris}
     
     def create_playlist_and_add_tracks(self):
         new_playlist = self.create_new_playlist()
         recommended_track_uris = self.get_recommendations()
 
         endpoint = f"playlists/{new_playlist['playlist_id']}/tracks"
-        response = self.execute_spotify_api_request(endpoint=endpoint, method='POST', data=recommended_track_uris)
+        response = self.execute_spotify_api_request(endpoint, method='POST', data=recommended_track_uris)
         if response:
             return new_playlist['playlist_url']
+        
+    def get_recently_played_artists(self):
+        """
+        :return ids_string (str): Artist ids in a single string separated by commas
+        """
+        endpoint = "me/player/recently-played?limit=50"
+        response = self.execute_spotify_api_request(endpoint)
+        ## grabbed only the first artist named for each track -- b/c number of artists must be <= 50
+        artist_ids = [item['track']['artists'][0]['id'] for item in response['items']]
+        # artist_ids = [artist['id'] for item in response['items'] for artist in item['track']['artists']]
+        ids_string = ",".join(artist_ids)
+        return ids_string
+    
+    def get_artist_genres(self):
+        """
+        :return genre_counts list(tuple): list of tuples (genre name, count) from most common to least
+        """
+        ids = self.get_recently_played_artists()
+        endpoint = f"artists?ids={ids}"
+        response = self.execute_spotify_api_request(endpoint)
+        genres = [genre for artist in response['artists'] for genre in artist['genres']]
+
+        # returns list of tuples -- [[item, count]]
+        genre_counts = Counter(genres).most_common()
+        return {'genres': genre_counts}
