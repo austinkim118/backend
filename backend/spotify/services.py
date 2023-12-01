@@ -2,14 +2,13 @@ from .models import SpotifyToken
 from django.utils import timezone
 from datetime import timedelta
 from .credentials import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
-from requests import Request, post, put, get
-from django.http import HttpResponse, JsonResponse
-
+from requests import post, put, get
 
 BASE_URL = "https://api.spotify.com/v1/"
 
 ## 
-class SpotifyUserAuth:
+class SpotifyUser:
+    """Authenticates Spotify User"""
     def __init__(self, session_key):
         self.session_key = session_key
         self.tokens = self.get_user_tokens()
@@ -75,13 +74,14 @@ class SpotifyUserAuth:
         self.update_or_create_user_token(self.session_key, access_token, refresh_token, token_type, expires_in)
     
 class Playlist:
+    """Operations regarding generating Spotify Playlist"""
     def __init__(self, session_key):
         self.session_key = session_key
-        self.spotify_user = SpotifyUserAuth(session_key)
+        self.tokens = SpotifyUser(session_key).tokens
 
     ## Handle any HTTP requests to Spotify API endpoints
     def execute_spotify_api_request(self, endpoint, method='GET', data=None):
-        tokens = self.spotify_user.tokens
+        tokens = self.tokens
         headers = {'Content-Type': 'application/json', 'Authorization': "Bearer " + tokens.access_token}
 
         if method == 'POST':

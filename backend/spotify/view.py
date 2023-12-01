@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from requests import Request
 from rest_framework import status
 from rest_framework.response import Response
-from .services import SpotifyUserAuth, Playlist
+from .services import SpotifyUser, Playlist
 
 class AuthURL(APIView):
     def get(self, request, format=None):
@@ -26,7 +26,7 @@ class SpotifyCallback(APIView):
         if not request.session.exists(request.session.session_key):
             request.session.create()
 
-        spotify_user = SpotifyUserAuth(request.session.session_key)
+        spotify_user = SpotifyUser(request.session.session_key)
 
         # sends POST request to spotify token endpoint to exchange auth code for access/refresh tokens
         response = spotify_user.exchange_code_for_tokens(code)
@@ -52,7 +52,7 @@ class SpotifyCallback(APIView):
         
 class IsAuthenticated(APIView):
     def get(self, request, format=None):
-        spotify_user = SpotifyUserAuth(request.session.session_key)
+        spotify_user = SpotifyUser(request.session.session_key)
         is_authenticated = spotify_user.is_spotify_authenticated()
         return Response({'status': is_authenticated}, status=status.HTTP_200_OK)
 
