@@ -4,6 +4,7 @@ from datetime import timedelta
 from .credentials import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
 from requests import post, put, get
 from collections import Counter
+from .genres import spotify_seed_genres
 
 BASE_URL = "https://api.spotify.com/v1/"
 
@@ -127,7 +128,7 @@ class Playlist:
         ## market should be based on user not hard coded
         ## limit should be based on duration inputted by user
         ## ==> 30min = 20 tracks, 1hr == 40 tracks, etc.
-        endpoint = f"recommendations?limit=30&market=US&seed_genres={seed[0]}%2C{seed[1]}%2C+{seed[2]}"
+        endpoint = f"recommendations?limit=50&market=US&seed_genres={','.join(seed)}"
         response = self.execute_spotify_api_request(endpoint)
         track_uris = [track['uri'] for track in response['tracks']]
         return {"uris": track_uris}
@@ -144,25 +145,26 @@ class Playlist:
         
     def get_recently_played_artists(self):
         """
-        :return ids_string (str): Artist ids in a single string separated by commas
+        :return ids_string list[str]: Artist ids
         """
         endpoint = "me/player/recently-played?limit=50"
         response = self.execute_spotify_api_request(endpoint)
         ## grabbed only the first artist named for each track -- b/c number of artists must be <= 50
         artist_ids = [item['track']['artists'][0]['id'] for item in response['items']]
         # artist_ids = [artist['id'] for item in response['items'] for artist in item['track']['artists']]
-        ids_string = ",".join(artist_ids)
-        return ids_string
+        return artist_ids
     
     def get_artist_genres(self, ids):
         """
         :param ids (str): Artist ids separated by commac no space
-        :return genre_counts list(tuple): list of tuples (genre name, count) from most common to least
+        :return top_five list[str]: top five genres of most recently listened to artists
         """
-        endpoint = f"artists?ids={ids}"
+        ids_string = ",".join(ids)
+        endpoint = f"artists?ids={ids_string}"
         response = self.execute_spotify_api_request(endpoint)
         genres = [genre for artist in response['artists'] for genre in artist['genres']]
 
         # returns list of tuples -- [[item, count]]
         genre_counts = Counter(genres).most_common()
-        return {'genres': genre_counts}
+        top_five = [genre[0] for genre in genre_counts if genre[0] in spotify_seed_genres][:5]
+        return top_five

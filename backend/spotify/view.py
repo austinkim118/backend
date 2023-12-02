@@ -59,9 +59,10 @@ class IsAuthenticated(APIView):
 class CreatePlaylist(APIView):
     def get(self, request, format=None):
         playlist = Playlist(request.session.session_key)
-        seed = ["k-pop", "pop", "country"]
         user_id = playlist.get_user_id()
         new_playlist = playlist.create_new_playlist(user_id)
+        artist_ids = playlist.get_recently_played_artists()
+        seed = playlist.get_artist_genres(artist_ids)
         recommended_track_uris = playlist.get_recommendations(seed)
         new_playlist_url = playlist.create_playlist_and_add_tracks(new_playlist, recommended_track_uris)
         return Response({"url": new_playlist_url}, status=status.HTTP_200_OK)
