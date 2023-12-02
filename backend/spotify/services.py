@@ -98,14 +98,20 @@ class Playlist:
             return {'Error': f'Issue with request: {str(e)}'}
         
     def get_user_id(self):
+        """
+        :return (str): Spotify User Id
+        """
         endpoint = "me"
         user_profile = self.execute_spotify_api_request(endpoint)
         user_id = user_profile['id']
         return user_id
     
-    def create_new_playlist(self):
-        user_id = self.get_user_id()
-        endpoint = f"users/{user_id}/playlists"
+    def create_new_playlist(self, id):
+        """
+        :param (str): Spotify User Id
+        :return Json{playlist_id, playlist_url}
+        """
+        endpoint = f"users/{id}/playlists"
         data = {'name': 'New Playlist', 'description': 'New Playlist Created', 'public': False}
         response = self.execute_spotify_api_request(endpoint, method='POST', data=data)
         playlist_id = response['id']
@@ -116,21 +122,25 @@ class Playlist:
     ## can take genres / artists / tracks as seed params
     def get_recommendations(self, seed):
         """
-        :param seed [list]: 5 seed parameters - can be genre/artist/track ==> but for now, will be genres
+        :param seed (list[str]): Up to 5 seed parameters - can be genre/artist/track ==> but for now, will be genres
         """
-        endpoint = f"recommendations?limit=100&seed_genres={seed[0]}%2C{seed[1]}%2C+{seed[2]}"
+        ## market should be based on user not hard coded
+        ## limit should be based on duration inputted by user
+        ## ==> 30min = 20 tracks, 1hr == 40 tracks, etc.
+        endpoint = f"recommendations?limit=30&market=US&seed_genres={seed[0]}%2C{seed[1]}%2C+{seed[2]}"
         response = self.execute_spotify_api_request(endpoint)
         track_uris = [track['uri'] for track in response['tracks']]
         return {"uris": track_uris}
     
-    def create_playlist_and_add_tracks(self):
-        new_playlist = self.create_new_playlist()
-        recommended_track_uris = self.get_recommendations()
-
-        endpoint = f"playlists/{new_playlist['playlist_id']}/tracks"
-        response = self.execute_spotify_api_request(endpoint, method='POST', data=recommended_track_uris)
+    def create_playlist_and_add_tracks(self, playlist, uris):
+        """
+        :param playlist (json): json object {id, url} -- newly created empty playlist
+        :param uris (list[str]): json object {uri: list of track uri strings} -- uris of recommended tracks
+        """
+        endpoint = f"playlists/{playlist['playlist_id']}/tracks"
+        response = self.execute_spotify_api_request(endpoint, method='POST', data=uris)
         if response:
-            return new_playlist['playlist_url']
+            return playlist['playlist_url']
         
     def get_recently_played_artists(self):
         """
@@ -144,11 +154,11 @@ class Playlist:
         ids_string = ",".join(artist_ids)
         return ids_string
     
-    def get_artist_genres(self):
+    def get_artist_genres(self, ids):
         """
+        :param ids (str): Artist ids separated by commac no space
         :return genre_counts list(tuple): list of tuples (genre name, count) from most common to least
         """
-        ids = self.get_recently_played_artists()
         endpoint = f"artists?ids={ids}"
         response = self.execute_spotify_api_request(endpoint)
         genres = [genre for artist in response['artists'] for genre in artist['genres']]
