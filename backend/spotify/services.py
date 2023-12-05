@@ -1,10 +1,15 @@
-from .models import SpotifyToken
+from .models import SpotifyToken, Track
 from django.utils import timezone
 from datetime import timedelta
 from .credentials import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
 from requests import post, put, get
 from collections import Counter
 from .genres import spotify_seed_genres
+from .serializers import TrackSerializer
+
+# import logging
+
+# logging.basicConfig(filename='playlist.log', level=logging.DEBUG)
 
 BASE_URL = "https://api.spotify.com/v1/"
 
@@ -18,7 +23,7 @@ class SpotifyUser:
         response = post('https://accounts.spotify.com/api/token', data={
             'grant_type': 'authorization_code',
             'code': code,
-            'redirect_uri': REDIRECT_URI,    # needs to be the same redirect uri used in AuthURL
+            'redirect_uri': REDIRECT_URI,    # needs to be the same redirect uri used in AuthURL -- from Spotify Document
             'client_id': CLIENT_ID,
             'client_secret': CLIENT_SECRET
         }).json()
@@ -70,9 +75,8 @@ class SpotifyUser:
         access_token = response.get('access_token')
         token_type = response.get('token_type')
         expires_in = response.get('expires_in')
-        refresh_token = response.get('refresh_token')
 
-        self.update_or_create_user_token(self.session_key, access_token, refresh_token, token_type, expires_in)
+        self.update_or_create_user_token(access_token, refresh_token, token_type, expires_in)
     
 class Playlist:
     """Operations regarding generating Spotify Playlist"""
@@ -119,19 +123,74 @@ class Playlist:
         playlist_url = response['external_urls']['spotify']
         return {"playlist_id": playlist_id, 'playlist_url': playlist_url}
     
-    # right now, manually inputted genres but SHOULD be interactive
     ## can take genres / artists / tracks as seed params
-    def get_recommendations(self, seed):
+    def get_recommendations(self, seed, desired_duration):
         """
+        Retrieves track recommendations with given seed genres, then selects tracks whose durations
+        would amount to the desired duration passed in by the User
+
         :param seed (list[str]): Up to 5 seed parameters - can be genre/artist/track ==> but for now, will be genres
+        :param desired_duration int: Desired length of the playlist in milliseconds
+        :return playlist_tracks list[str(track uri)]: Selected track uris for the playlist
         """
         ## market should be based on user not hard coded
         ## limit should be based on duration inputted by user
         ## ==> 30min = 20 tracks, 1hr == 40 tracks, etc.
-        endpoint = f"recommendations?limit=50&market=US&seed_genres={','.join(seed)}"
+        endpoint = f"recommendations?limit=100&market=US&seed_genres={','.join(seed)}"
         response = self.execute_spotify_api_request(endpoint)
-        track_uris = [track['uri'] for track in response['tracks']]
-        return {"uris": track_uris}
+        recommended_tracks = [Track(track['id'], track['duration_ms']) for track in response['tracks']]
+
+        playlist_tracks = self.playlist_duration(recommended_tracks, desired_duration)
+        uris = []
+        
+        # return {"playlist": playlist_tracks["playlist"], "duration": playlist_tracks["duration"]/60000}
+
+        for track_id in playlist_tracks["playlist"]:
+            uris.append(f"spotify:track:{track_id}")
+        return uris
+
+    # Given a list of Track object, selects tracks for the playlist based on lengh
+    def playlist_duration(self, tracks, desired_duration):
+        """
+        :param tracks list[Track]: Track object {id, duration}
+        :param desired_duration int: Desired length of the playlist in milliseconds
+        :return playlist_tracks list[str(track uri)]: Selected track uris for the playlist        
+        """
+        # logging.info("Entering playlist_duration function")
+        playlist = None
+        duration = 0
+
+        def backtrack(index, current_playlist, current_duration):
+            nonlocal playlist, duration
+            # logging.info(f"Entering backtracking function Track Number:{index}")
+            # logging.info(f"Index: {index}, Current Playlist: {current_playlist}Current Duration: {current_duration}")
+
+            if desired_duration - 500 <= current_duration <= desired_duration + 500:
+                playlist = current_playlist
+                duration = current_duration
+                # logging.info(f"DESIRED DURATION MET AND PLAYLIST CREATED {playlist}")
+                raise StopIteration  # Use an exception for an early exit
+
+            # Indicate that the current path exceeds the desired duration / Indicate that no valid playlist is found
+            if current_duration > desired_duration or index == len(tracks) :
+                return
+
+            # include current track
+            backtrack(index + 1, current_playlist + [tracks[index].id], current_duration + tracks[index].duration)
+
+            # not include current track
+            backtrack(index + 1, current_playlist, current_duration)
+    
+        try:
+            backtrack(0, [], 0)
+            if playlist:
+                # logging.info("Playlist found.")
+                return {"playlist": playlist, "duration": duration}
+            else:
+                # logging.info("No playlist found.")
+                return []
+        except StopIteration:
+            return {"playlist": playlist, "duration": duration}
     
     def create_playlist_and_add_tracks(self, playlist, uris):
         """
@@ -162,7 +221,7 @@ class Playlist:
         ids_string = ",".join(ids)
         endpoint = f"artists?ids={ids_string}"
         response = self.execute_spotify_api_request(endpoint)
-        genres = [genre for artist in response['artists'] for genre in artist['genres']]
+        genres = [genre.replace(' ', '-') for artist in response['artists'] for genre in artist['genres']]
 
         # returns list of tuples -- [[item, count]]
         genre_counts = Counter(genres).most_common()

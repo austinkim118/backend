@@ -19,6 +19,7 @@ urlpatterns = [
     path('create-playlist/', CreatePlaylist.as_view()),
     path('id/', UserId.as_view()),
     path('recommendations/', Recommendations.as_view()),
+    path('user-recommendations/', UserRecommendations.as_view()),
     path('recently-played/', RecentlyPlayed.as_view()),
     path('genres/', Genres.as_view())
 ]
