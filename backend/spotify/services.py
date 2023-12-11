@@ -111,6 +111,16 @@ class Playlist:
         user_id = user_profile['id']
         return user_id
     
+    # should be combined with above to avoid redundant API request -- maybe store it in separate datatable "User"
+    def get_username(self):
+        """
+        :return (str): Spotify User display name
+        """
+        endpoint = "me"
+        user_profile = self.execute_spotify_api_request(endpoint)
+        username = user_profile['display_name']
+        return username
+    
     def create_new_playlist(self, id):
         """
         :param (str): Spotify User Id
