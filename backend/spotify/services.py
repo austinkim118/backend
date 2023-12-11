@@ -13,6 +13,23 @@ from .serializers import TrackSerializer
 
 BASE_URL = "https://api.spotify.com/v1/"
 
+## Handle any HTTP requests to Spotify API endpoints
+def execute_spotify_api_request(tokens, endpoint, method='GET', data=None):
+    headers = {'Content-Type': 'application/json', 'Authorization': "Bearer " + tokens.access_token}
+
+    if method == 'POST':
+        response = post(BASE_URL + endpoint, headers=headers, json=data)
+    elif method == 'PUT':
+        response = put(BASE_URL + endpoint, headers=headers, json=data)
+    else:
+        response = get(BASE_URL + endpoint, {}, headers=headers)
+
+    try:
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+        return response.json()
+    except Exception as e:
+        return {'Error': f'Issue with request: {str(e)}'}
+
 class SpotifyUser:
     """Authenticates Spotify User"""
     def __init__(self, session_key):
@@ -77,37 +94,37 @@ class SpotifyUser:
         expires_in = response.get('expires_in')
 
         self.update_or_create_user_token(access_token, refresh_token, token_type, expires_in)
+
+    def get_user_id(self):
+        """
+        :return (str): Spotify User Id
+        """
+        endpoint = "me"
+        user_profile = execute_spotify_api_request(self.tokens, endpoint)
+        user_id = user_profile['id']
+        return user_id
+
+    def get_username(self):
+        """
+        :return (str): Spotify User display name
+        """
+        endpoint = "me"
+        user_profile = execute_spotify_api_request(self.tokens, endpoint)
+        username = user_profile['display_name']
+        return username
     
 class Playlist:
     """Operations regarding generating Spotify Playlist"""
     def __init__(self, session_key):
         self.session_key = session_key
         self.user = SpotifyUser(session_key)
-
-    ## Handle any HTTP requests to Spotify API endpoints
-    def execute_spotify_api_request(self, endpoint, method='GET', data=None):
-        tokens = self.user.tokens
-        headers = {'Content-Type': 'application/json', 'Authorization': "Bearer " + tokens.access_token}
-
-        if method == 'POST':
-            response = post(BASE_URL + endpoint, headers=headers, json=data)
-        elif method == 'PUT':
-            response = put(BASE_URL + endpoint, headers=headers, json=data)
-        else:
-            response = get(BASE_URL + endpoint, {}, headers=headers)
-
-        try:
-            response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
-            return response.json()
-        except Exception as e:
-            return {'Error': f'Issue with request: {str(e)}'}
         
     def get_user_id(self):
         """
         :return (str): Spotify User Id
         """
         endpoint = "me"
-        user_profile = self.execute_spotify_api_request(endpoint)
+        user_profile = execute_spotify_api_request(self.user.tokens, endpoint)
         user_id = user_profile['id']
         return user_id
     
@@ -117,18 +134,19 @@ class Playlist:
         :return (str): Spotify User display name
         """
         endpoint = "me"
-        user_profile = self.execute_spotify_api_request(endpoint)
+        user_profile = execute_spotify_api_request(self.user.tokens, endpoint)
         username = user_profile['display_name']
         return username
     
-    def create_new_playlist(self, id):
+    def create_new_playlist(self):
         """
         :param (str): Spotify User Id
         :return Json{playlist_id, playlist_url}
         """
-        endpoint = f"users/{id}/playlists"
+        user_id = self.user.get_user_id()
+        endpoint = f"users/{user_id}/playlists"
         data = {'name': 'New Playlist', 'description': 'New Playlist Created', 'public': False}
-        response = self.execute_spotify_api_request(endpoint, method='POST', data=data)
+        response = execute_spotify_api_request(self.user.tokens, endpoint, method='POST', data=data)
         playlist_id = response['id']
         playlist_url = response['external_urls']['spotify']
         return {"playlist_id": playlist_id, 'playlist_url': playlist_url}
@@ -147,7 +165,7 @@ class Playlist:
         ## limit should be based on duration inputted by user
         ## ==> 30min = 20 tracks, 1hr == 40 tracks, etc.
         endpoint = f"recommendations?limit=100&market=US&seed_genres={','.join(seed)}"
-        response = self.execute_spotify_api_request(endpoint)
+        response = execute_spotify_api_request(self.user.tokens, endpoint)
         recommended_tracks = [Track(track['id'], track['duration_ms']) for track in response['tracks']]
 
         playlist_tracks = self.playlist_duration(recommended_tracks, desired_duration)
@@ -208,7 +226,7 @@ class Playlist:
         :param uris (list[str]): json object {uri: list of track uri strings} -- uris of recommended tracks
         """
         endpoint = f"playlists/{playlist['playlist_id']}/tracks"
-        response = self.execute_spotify_api_request(endpoint, method='POST', data=uris)
+        response = execute_spotify_api_request(self.user.tokens, endpoint, method='POST', data=uris)
         if response:
             return playlist['playlist_url']
         
@@ -217,7 +235,7 @@ class Playlist:
         :return ids_string list[str]: Artist ids
         """
         endpoint = "me/player/recently-played?limit=50"
-        response = self.execute_spotify_api_request(endpoint)
+        response = execute_spotify_api_request(self.user.tokens, endpoint)
         ## grabbed only the first artist named for each track -- b/c number of artists must be <= 50
         artist_ids = [item['track']['artists'][0]['id'] for item in response['items']]
         # artist_ids = [artist['id'] for item in response['items'] for artist in item['track']['artists']]
@@ -230,7 +248,7 @@ class Playlist:
         """
         ids_string = ",".join(ids)
         endpoint = f"artists?ids={ids_string}"
-        response = self.execute_spotify_api_request(endpoint)
+        response = execute_spotify_api_request(self.user.tokens, endpoint)
         genres = [genre.replace(' ', '-') for artist in response['artists'] for genre in artist['genres']]
 
         # returns list of tuples -- [[item, count]]

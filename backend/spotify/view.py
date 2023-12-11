@@ -61,11 +61,10 @@ class CreatePlaylist(APIView):
     def post(self, request, format=None):
         playlist = Playlist(request.session.session_key)
         # user input
-        user_input = json.loads(request.body)
+        user_input = request.data
         duration = user_input.get('duration')
         # creates new playlist
-        user_id = playlist.get_user_id()
-        new_playlist = playlist.create_new_playlist(user_id)
+        new_playlist = playlist.create_new_playlist()
         # retrieves recommendations
         artist_ids = playlist.get_recently_played_artists()
         seed = playlist.get_artist_genres(artist_ids)
@@ -74,42 +73,42 @@ class CreatePlaylist(APIView):
         new_playlist_url = playlist.create_playlist_and_add_tracks(new_playlist, recommended_track_uris)
         return Response({"url": new_playlist_url}, status=status.HTTP_200_OK)
 
-# class UserRecommendations(APIView):
-#     def post(self, request, format=None):
-#         # user input
-#         user_input = json.loads(request.body)
-#         duration = user_input.get('duration')
-#         playlist = Playlist(request.session.session_key)
-#         seed = ["k-pop", "pop", "country"]
-#         recommended_tracks = playlist.get_recommendations(seed, duration)
-#         return Response(recommended_tracks, status=status.HTTP_200_OK)
+class UserRecommendations(APIView):
+    def post(self, request, format=None):
+        # user input
+        user_input = json.loads(request.body)
+        duration = user_input.get('duration')
+        playlist = Playlist(request.session.session_key)
+        seed = ["k-pop", "pop", "country"]
+        recommended_tracks = playlist.get_recommendations(seed, duration)
+        return Response(recommended_tracks, status=status.HTTP_200_OK)
     
-# class UserId(APIView):
-#     def get(self, request, format=None):
-#         spotify_user = Playlist(request.session.session_key)
-#         user_id = spotify_user.get_user_id()
-#         return Response({'user_id': user_id}, status=status.HTTP_200_OK)
+class UserId(APIView):
+    def get(self, request, format=None):
+        spotify_user = SpotifyUser(request.session.session_key)
+        user_id = spotify_user.get_user_id()
+        return Response({'user_id': user_id}, status=status.HTTP_200_OK)
 
-# class Recommendations(APIView):
-#     def get(self, request, format=None):
-#         playlist = Playlist(request.session.session_key)
-#         seed = ["k-pop", "pop", "country"]
-#         duration = 6600000
-#         recommended_tracks = playlist.get_recommendations(seed, duration)
-#         return Response(recommended_tracks, status=status.HTTP_200_OK)
+class Recommendations(APIView):
+    def get(self, request, format=None):
+        playlist = Playlist(request.session.session_key)
+        seed = ["k-pop", "pop", "country"]
+        duration = 6600000
+        recommended_tracks = playlist.get_recommendations(seed, duration)
+        return Response(recommended_tracks, status=status.HTTP_200_OK)
 
-# class RecentlyPlayed(APIView):
-#     def get(self, request, format=None):
-#         playlist = Playlist(request.session.session_key)
-#         recently_played = playlist.get_recently_played_tracks()
-#         return Response(recently_played, status=status.HTTP_200_OK)
+class RecentlyPlayed(APIView):
+    def get(self, request, format=None):
+        playlist = Playlist(request.session.session_key)
+        recently_played = playlist.get_recently_played_tracks()
+        return Response(recently_played, status=status.HTTP_200_OK)
     
-# class Genres(APIView):
-#     def get(self, request, format=None):
-#         playlist = Playlist(request.session.session_key)
-#         artist_ids = playlist.get_recently_played_artists()
-#         genres = playlist.get_artist_genres(artist_ids)
-#         return Response(genres, status=status.HTTP_200_OK)
+class Genres(APIView):
+    def get(self, request, format=None):
+        playlist = Playlist(request.session.session_key)
+        artist_ids = playlist.get_recently_played_artists()
+        genres = playlist.get_artist_genres(artist_ids)
+        return Response(genres, status=status.HTTP_200_OK)
 
 class Username(APIView):
     def get(self, request, format=None):
