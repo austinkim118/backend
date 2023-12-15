@@ -47,7 +47,7 @@ class SpotifyUser:
         return response
 
     def get_user_tokens(self):
-        user_tokens = SpotifyToken.objects.filter(user=self.session_key)
+        user_tokens = SpotifyToken.objects.filter(session_key=self.session_key)
         if user_tokens.exists():
             return user_tokens.first()
         else:
