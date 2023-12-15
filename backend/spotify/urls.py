@@ -23,4 +23,5 @@ urlpatterns = [
     path('recently-played/', RecentlyPlayed.as_view()),
     path('genres/', Genres.as_view()),
     path('username/', Username.as_view()),
-]
+    path('logout/', Logout.as_view())
+    ]

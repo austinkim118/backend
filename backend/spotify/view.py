@@ -6,6 +6,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from .services import SpotifyUser, Playlist
 import json
+from django.contrib.sessions.models import Session
+from .models import SpotifyToken
 
 class AuthURL(APIView):
     def get(self, request, format=None):
@@ -115,3 +117,17 @@ class Username(APIView):
         spotify_user = SpotifyUser(request.session.session_key)
         username = spotify_user.get_username()
         return Response({'username': username}, status=status.HTTP_200_OK)
+    
+class Logout(APIView):
+    def delete(self, request, format=None):
+        session_key = request.session.session_key
+        if session_key:
+            try:
+                session = Session.objects.get(session_key=session_key)
+                session.delete()
+                SpotifyToken.objects.filter(session_key=session_key).delete()
+                return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
+            except Session.DoesNotExist:
+                return Response({'message': 'Invalid session key'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'message': 'No session key found'}, status=status.HTTP_400_BAD_REQUEST)

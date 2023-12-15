@@ -6,7 +6,6 @@ from requests import post, put, get
 from collections import Counter
 from .genres import spotify_seed_genres
 from .serializers import TrackSerializer
-
 # import logging
 
 # logging.basicConfig(filename='playlist.log', level=logging.DEBUG)
@@ -29,7 +28,7 @@ def execute_spotify_api_request(tokens, endpoint, method='GET', data=None):
         return response.json()
     except Exception as e:
         return {'Error': f'Issue with request: {str(e)}'}
-
+      
 class SpotifyUser:
     """Authenticates Spotify User"""
     def __init__(self, session_key):
@@ -64,7 +63,7 @@ class SpotifyUser:
             self.tokens.save(update_fields=['access_token', 'refresh_token', 'token_type', 'expires_in'])
         else:
             self.tokens = SpotifyToken(
-                user=self.session_key,
+                session_key=self.session_key,
                 access_token=access_token,
                 refresh_token=refresh_token,
                 token_type=token_type,
