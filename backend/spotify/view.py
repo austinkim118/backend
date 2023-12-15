@@ -112,6 +112,6 @@ class Genres(APIView):
 
 class Username(APIView):
     def get(self, request, format=None):
-        spotify_user = Playlist(request.session.session_key)
+        spotify_user = SpotifyUser(request.session.session_key)
         username = spotify_user.get_username()
         return Response({'username': username}, status=status.HTTP_200_OK)

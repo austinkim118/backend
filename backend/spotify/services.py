@@ -118,25 +118,6 @@ class Playlist:
     def __init__(self, session_key):
         self.session_key = session_key
         self.user = SpotifyUser(session_key)
-        
-    def get_user_id(self):
-        """
-        :return (str): Spotify User Id
-        """
-        endpoint = "me"
-        user_profile = execute_spotify_api_request(self.user.tokens, endpoint)
-        user_id = user_profile['id']
-        return user_id
-    
-    # should be combined with above to avoid redundant API request -- maybe store it in separate datatable "User"
-    def get_username(self):
-        """
-        :return (str): Spotify User display name
-        """
-        endpoint = "me"
-        user_profile = execute_spotify_api_request(self.user.tokens, endpoint)
-        username = user_profile['display_name']
-        return username
     
     def create_new_playlist(self):
         """
