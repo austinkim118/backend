@@ -65,12 +65,13 @@ class CreatePlaylist(APIView):
         # user input
         user_input = request.data
         duration = user_input.get('duration')
+        mode = user_input.get('mode')
         # creates new playlist
         new_playlist = playlist.create_new_playlist()
         # retrieves recommendations
         artist_ids = playlist.get_recently_played_artists()
-        seed = playlist.get_artist_genres(artist_ids)
-        recommended_track_uris = playlist.get_recommendations(seed, duration)
+        seed = playlist.get_artist_genres(artist_ids, mode)
+        recommended_track_uris = playlist.get_recommendations(seed, duration, mode)
         # updates playlist
         new_playlist_url = playlist.create_playlist_and_add_tracks(new_playlist, recommended_track_uris)
         return Response({"url": new_playlist_url}, status=status.HTTP_200_OK)
@@ -109,7 +110,8 @@ class Genres(APIView):
     def get(self, request, format=None):
         playlist = Playlist(request.session.session_key)
         artist_ids = playlist.get_recently_played_artists()
-        genres = playlist.get_artist_genres(artist_ids)
+        mode = 'genre'
+        genres = playlist.get_artist_genres(artist_ids, mode)
         return Response(genres, status=status.HTTP_200_OK)
 
 class Username(APIView):

@@ -6,6 +6,7 @@ from requests import post, put, get
 from collections import Counter
 from .genres import spotify_seed_genres
 from .serializers import TrackSerializer
+import random
 # import logging
 
 # logging.basicConfig(filename='playlist.log', level=logging.DEBUG)
@@ -132,7 +133,7 @@ class Playlist:
         return {"playlist_id": playlist_id, 'playlist_url': playlist_url}
     
     ## can take genres / artists / tracks as seed params
-    def get_recommendations(self, seed, desired_duration):
+    def get_recommendations(self, seed, desired_duration, mode):
         """
         Retrieves track recommendations with given seed genres, then selects tracks whose durations
         would amount to the desired duration passed in by the User
@@ -144,7 +145,7 @@ class Playlist:
         ## market should be based on user not hard coded
         ## limit should be based on duration inputted by user
         ## ==> 30min = 20 tracks, 1hr == 40 tracks, etc.
-        endpoint = f"recommendations?limit=100&market=US&seed_genres={','.join(seed)}"
+        endpoint = f"recommendations?limit=100&market=US&seed_genres={','.join(seed)}{'&max_popularity=30' if mode == 'artist' else '&min_popularity=70'}"
         response = execute_spotify_api_request(self.user.tokens, endpoint)
         recommended_tracks = [Track(track['id'], track['duration_ms']) for track in response['tracks']]
 
@@ -221,7 +222,7 @@ class Playlist:
         # artist_ids = [artist['id'] for item in response['items'] for artist in item['track']['artists']]
         return artist_ids
     
-    def get_artist_genres(self, ids):
+    def get_artist_genres(self, ids, mode):
         """
         :param ids (str): Artist ids separated by commac no space
         :return top_five list[str]: top five genres of most recently listened to artists
@@ -232,6 +233,10 @@ class Playlist:
         genres = [genre.replace(' ', '-') for artist in response['artists'] for genre in artist['genres']]
 
         # returns list of tuples -- [[item, count]]
-        genre_counts = Counter(genres).most_common()
-        top_five = [genre[0] for genre in genre_counts if genre[0] in spotify_seed_genres][:5]
-        return top_five
+        potential_genres = [genre[0] for genre in Counter(genres).most_common()]
+        # genre_counts = Counter(genres).most_common()
+
+        top_five = [genre for genre in potential_genres if genre in spotify_seed_genres][:5]
+        bottom_five = random.sample([genre for genre in spotify_seed_genres if genre not in potential_genres], 5)
+
+        return top_five if mode == "artist" else bottom_five
